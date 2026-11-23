@@ -44,10 +44,26 @@ class FlaskTests(unittest.TestCase):
         html = result.get_data(as_text=True)
         self.assertEqual(result.status_code, 200)
         self.assertIn('action="/weather"', html)
+        self.assertIn('method="get"', html)
         self.assertIn("台北市", html)
         self.assertIn("/static/images/outfits/mild.svg", html)
         self.assertNotIn("<progress", html)
         upstream.assert_not_called()
+
+    @patch("app.requests.get")
+    def test_weather_link_without_choices_redirects_to_home(self, upstream):
+        result = self.client.get("/weather")
+        self.assertEqual(result.status_code, 302)
+        self.assertEqual(result.headers["Location"], "/")
+        upstream.assert_not_called()
+
+    @patch("app.requests.get")
+    def test_weather_link_with_choices_renders_the_result(self, upstream):
+        upstream.return_value = Mock(status_code=200, **{"json.return_value": forecast()})
+        result = self.client.get("/weather", query_string=FORM)
+        self.assertEqual(result.status_code, 200)
+        self.assertIn("高雄市的出門建議", result.get_data(as_text=True))
+        upstream.assert_called_once()
 
     @patch("app.requests.get")
     def test_weather_page_renders_result_and_passes_taiwan_parameters(self, upstream):

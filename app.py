@@ -2,7 +2,7 @@ from datetime import date, datetime
 from math import isfinite
 
 import requests
-from flask import Flask, render_template, request
+from flask import Flask, redirect, render_template, request, url_for
 
 from cities import CITIES
 from decision_engine import ACTIVITIES, PREFERENCES, Weather, evaluate
@@ -120,10 +120,13 @@ def index():
     return render_page(DEFAULT_SELECTION)
 
 
-@app.post("/weather")
+@app.route("/weather", methods=["GET", "POST"])
 def query_weather():
     options = {"city": CITIES, "activity": ACTIVITIES, "preference": PREFERENCES}
-    submitted = {field: request.form.get(field) for field in options}
+    inputs = request.form if request.method == "POST" else request.args
+    submitted = {field: inputs.get(field) for field in options}
+    if request.method != "POST" and all(value is None for value in submitted.values()):
+        return redirect(url_for("index"))
     selection = {
         field: value if value in options[field] else DEFAULT_SELECTION[field]
         for field, value in submitted.items()

@@ -24,7 +24,7 @@
                 <h1 id="page-title">今天出門，<br><span>穿什麼？</span></h1>
                 <p>輸入縣市、行程和體感偏好，看看今天怎麼穿、包包該放什麼。</p>
             </div>
-            <form class="plan surface" id="plan" method="post" action="{{ url_for('query_weather') }}">
+            <form class="plan surface" id="plan" method="get" action="{{ url_for('query_weather') }}">
                 <h2>你的出門計畫</h2>
                 <div class="form-grid">
                     <label class="city-field" for="city">
