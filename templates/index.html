@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>今日出門決策助手</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23f3dea2'/%3E%3Ccircle cx='20' cy='20' r='8' fill='none' stroke='%23563e20' stroke-width='3'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="masthead shell">
+        <a class="brand" href="{{ url_for('index') }}">
+            <svg viewBox="0 0 40 40" aria-hidden="true">
+                <circle cx="20" cy="20" r="6.5"/>
+                <path d="M20 5v5m0 20v5M5 20h5m20 0h5M9.4 9.4l3.5 3.5m14.2 14.2 3.5 3.5m0-21.2-3.5 3.5M12.9 27.1l-3.5 3.5"/>
+            </svg>
+            今日出門決策助手
+        </a>
+    </header>
+
+    <main class="shell">
+        <section class="hero" aria-labelledby="page-title">
+            <div class="hero-copy">
+                <h1 id="page-title">今天出門，<br><span>穿什麼？</span></h1>
+                <p>輸入縣市、行程和體感偏好，看看今天怎麼穿、包包該放什麼。</p>
+            </div>
+            <form class="plan surface" id="plan" method="post" action="{{ url_for('query_weather') }}">
+                <h2>你的出門計畫</h2>
+                <div class="form-grid">
+                    <label class="city-field" for="city">
+                        縣市
+                        <select name="city" id="city" required>
+                            {% for city in cities %}
+                            <option value="{{ city }}"{{ ' selected' if selection.city == city }}>{{ city }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label for="activity">
+                        今天的行程
+                        <select name="activity" id="activity" required>
+                            {% for key, activity in activities.items() %}
+                            <option value="{{ key }}"{{ ' selected' if selection.activity == key }}>{{ activity.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label for="preference">
+                        你的體感
+                        <select name="preference" id="preference" required>
+                            {% for key, label in preferences.items() %}
+                            <option value="{{ key }}"{{ ' selected' if selection.preference == key }}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+                <button type="submit">看看今天怎麼穿 <span aria-hidden="true">→</span></button>
+            </form>
+        </section>
+
+        {% if error %}
+        <p class="error" role="alert">{{ error }}</p>
+        {% endif %}
+
+        {% if decision %}
+        <section class="result" aria-labelledby="result-title">
+            <header class="result-heading">
+                <div>
+                    <h2 id="result-title">{{ selection.city }}的出門建議</h2>
+                    <p>{{ activities[selection.activity].label }} · {{ preferences[selection.preference] }}</p>
+                </div>
+                <p class="weather-time">預報 <time datetime="{{ weather.date }}">{{ weather.date }}</time> · <time datetime="{{ weather.current_time }}">{{ weather.current_time[11:16] }}</time>（台灣時間）</p>
+            </header>
+            <div class="result-grid">
+                <figure class="outfit surface">
+                    <img src="{{ url_for('static', filename=decision.outfit.path) }}" alt="{{ decision.outfit.title }}插畫" width="640" height="400">
+                    <figcaption>
+                        <h3>{{ decision.outfit.title }}</h3>
+                        <p>{{ decision.outfit_tip }}</p>
+                    </figcaption>
+                </figure>
+
+                <div class="conditions surface">
+                    <div class="score {{ decision.level_style }}">
+                        <div class="score-heading">
+                            <h3>出門舒適度</h3>
+                            <span class="level">{{ decision.level }}</span>
+                        </div>
+                        <p class="score-value"><strong>{{ decision.score }}</strong><span> / 100</span></p>
+                        <progress value="{{ decision.score }}" max="100" aria-label="出門舒適度"></progress>
+                    </div>
+                    <h3 class="weather-heading">{{ weather.summary }} · {{ weather.temperature|round(1) }}°C</h3>
+                    <dl class="weather-grid">
+                        <div><dt>個人化體感</dt><dd>{{ decision.adjusted_temperature|round(1) }}°C</dd></div>
+                        <div><dt>今日低／高溫</dt><dd>{{ weather.temperature_min|round(1) }}° / {{ weather.temperature_max|round(1) }}°C</dd></div>
+                        <div><dt>最高降雨機率</dt><dd>{{ weather.rain_probability|round|int }}%</dd></div>
+                        <div><dt>目前風速</dt><dd>{{ weather.wind_speed|round(1) }} km/h</dd></div>
+                        <div><dt>相對濕度</dt><dd>{{ weather.humidity|round|int }}%</dd></div>
+                        <div><dt>最高紫外線指數</dt><dd>{{ weather.uv_max|round(1) }}</dd></div>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="kit-grid">
+                <section class="pack surface" aria-labelledby="pack-title">
+                    <h3 id="pack-title">出門帶這些</h3>
+                    <ul class="accessories">
+                        {% for item in decision.accessories %}
+                        <li>
+                            <img src="{{ url_for('static', filename=item.path) }}" width="160" height="128" alt="">
+                            <span>{{ item.title }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+                <section class="reminders surface" aria-labelledby="reminders-title">
+                    <h3 id="reminders-title">出門前留意</h3>
+                    <ul class="tip-list">
+                        <li><strong>溫差 {{ decision.spread|round(1) }}°C</strong> {{ decision.layer_tip }}</li>
+                        <li><strong>雨具</strong> {{ decision.rain_tip }}</li>
+                        {% if decision.wind_tip %}<li><strong>強風</strong> {{ decision.wind_tip }}</li>{% endif %}
+                        <li><strong>防曬</strong> {{ decision.uv_tip }}</li>
+                    </ul>
+                </section>
+            </div>
+
+            <p class="local-tip">{{ decision.easter_egg }}</p>
+        </section>
+        {% else %}
+        <figure class="preview surface">
+            <img src="{{ url_for('static', filename=preview.path) }}" alt="" width="640" height="400">
+            <figcaption>
+                <h2>{{ preview.title }}範例</h2>
+                <p>查詢之後，這裡會顯示適合今天的主穿搭、必帶配件和出門舒適度。</p>
+            </figcaption>
+        </figure>
+        {% endif %}
+    </main>
+
+    <footer class="shell footer">
+        <span>氣象資料來自 <a href="https://open-meteo.com/">Open-Meteo</a>（<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>）。</span>
+        <span>穿搭與舒適度由課程規則推算。</span>
+    </footer>
+</body>
+</html>
